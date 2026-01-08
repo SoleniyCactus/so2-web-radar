@@ -82,11 +82,12 @@ function connect(room) {
         return;
     }
     
+    // Try HiveMQ public broker
     client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt', {
         clientId: 'viewer_' + Math.random().toString(16).substr(2, 8),
         clean: true,
-        connectTimeout: 15000,
-        reconnectPeriod: 5000
+        connectTimeout: 10000,
+        reconnectPeriod: 3000
     });
     
     client.on('connect', function() {
@@ -157,23 +158,52 @@ function draw(d) {
         return { x: size / 2 + rx * size / 2, y: size / 2 - rz * size / 2 };
     }
     
-    // Local player (green)
-    const lp = w2r(d.lx, d.lz);
-    ctx.fillStyle = '#00ff00';
-    ctx.beginPath();
-    ctx.arc(lp.x, lp.y, 8, 0, Math.PI * 2);
-    ctx.fill();
+    function drawPlayer(px, pz, yaw, color, isLocal) {
+        const p = w2r(px, pz);
+        if (p.x < 0 || p.x > size || p.y < 0 || p.y > size) return;
+        
+        const r = isLocal ? 10 : 8;
+        const arrowLen = isLocal ? 18 : 14;
+        
+        // Draw circle
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw direction arrow
+        if (yaw !== undefined) {
+            const rad = (-yaw + 90) * Math.PI / 180;
+            const ax = p.x + Math.cos(rad) * arrowLen;
+            const ay = p.y - Math.sin(rad) * arrowLen;
+            
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(ax, ay);
+            ctx.stroke();
+            
+            // Arrow head
+            const headLen = 6;
+            const angle1 = rad + 2.5;
+            const angle2 = rad - 2.5;
+            ctx.beginPath();
+            ctx.moveTo(ax, ay);
+            ctx.lineTo(ax - Math.cos(angle1) * headLen, ay + Math.sin(angle1) * headLen);
+            ctx.moveTo(ax, ay);
+            ctx.lineTo(ax - Math.cos(angle2) * headLen, ay + Math.sin(angle2) * headLen);
+            ctx.stroke();
+        }
+    }
     
-    // Enemies (red)
-    ctx.fillStyle = '#ff0000';
+    // Draw local player (green)
+    drawPlayer(d.lx, d.lz, d.ly, '#00ff00', true);
+    
+    // Draw enemies (red)
     if (d.e && d.e.length) {
         d.e.forEach(function(en) {
-            const ep = w2r(en.x, en.z);
-            if (ep.x >= 0 && ep.x <= size && ep.y >= 0 && ep.y <= size) {
-                ctx.beginPath();
-                ctx.arc(ep.x, ep.y, 8, 0, Math.PI * 2);
-                ctx.fill();
-            }
+            drawPlayer(en.x, en.z, en.y, '#ff0000', false);
         });
     }
 }
