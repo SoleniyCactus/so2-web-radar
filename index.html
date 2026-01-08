@@ -158,52 +158,37 @@ function draw(d) {
         return { x: size / 2 + rx * size / 2, y: size / 2 - rz * size / 2 };
     }
     
-    function drawPlayer(px, pz, yaw, color, isLocal) {
-        const p = w2r(px, pz);
-        if (p.x < 0 || p.x > size || p.y < 0 || p.y > size) return;
-        
-        const r = isLocal ? 10 : 8;
-        const arrowLen = isLocal ? 18 : 14;
-        
-        // Draw circle
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Draw direction arrow
-        if (yaw !== undefined) {
-            const rad = (-yaw + 90) * Math.PI / 180;
-            const ax = p.x + Math.cos(rad) * arrowLen;
-            const ay = p.y - Math.sin(rad) * arrowLen;
-            
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(p.x, p.y);
-            ctx.lineTo(ax, ay);
-            ctx.stroke();
-            
-            // Arrow head
-            const headLen = 6;
-            const angle1 = rad + 2.5;
-            const angle2 = rad - 2.5;
-            ctx.beginPath();
-            ctx.moveTo(ax, ay);
-            ctx.lineTo(ax - Math.cos(angle1) * headLen, ay + Math.sin(angle1) * headLen);
-            ctx.moveTo(ax, ay);
-            ctx.lineTo(ax - Math.cos(angle2) * headLen, ay + Math.sin(angle2) * headLen);
-            ctx.stroke();
-        }
+    const r = 6.4; // radius (8 / 1.25)
+    
+    // Draw teammates (green)
+    ctx.fillStyle = '#00ff00';
+    if (d.t && d.t.length) {
+        d.t.forEach(function(tm) {
+            const p = w2r(tm[0], tm[1]);
+            if (p.x >= 0 && p.x <= size && p.y >= 0 && p.y <= size) {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        });
     }
     
-    // Draw local player (green)
-    drawPlayer(d.lx, d.lz, d.ly, '#00ff00', true);
+    // Draw local player (green, slightly larger)
+    const lp = w2r(d.lx, d.lz);
+    ctx.beginPath();
+    ctx.arc(lp.x, lp.y, r * 1.2, 0, Math.PI * 2);
+    ctx.fill();
     
     // Draw enemies (red)
+    ctx.fillStyle = '#ff0000';
     if (d.e && d.e.length) {
         d.e.forEach(function(en) {
-            drawPlayer(en.x, en.z, en.y, '#ff0000', false);
+            const p = w2r(en[0], en[1]);
+            if (p.x >= 0 && p.x <= size && p.y >= 0 && p.y <= size) {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+                ctx.fill();
+            }
         });
     }
 }
