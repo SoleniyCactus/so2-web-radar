@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Web Radar Viewer</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#1a1a2e;display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:100vh;font-family:Arial,sans-serif}
+#radar{background:#0f0f1a;border:2px solid #4a4a6a;border-radius:8px;max-width:95vw;max-height:95vw;display:none}
+.info{color:#fff;text-align:center;margin:10px;font-size:16px}
+.room{color:#0ff;font-weight:bold;font-size:24px}
+.status{font-size:14px;margin-top:5px}
+.ok{color:#0f0}.err{color:#f00}.wait{color:#ff0}
+#roomInput{font-size:20px;padding:10px 20px;text-transform:uppercase;text-align:center;width:200px;border:2px solid #4a4a6a;border-radius:8px;background:#0f0f1a;color:#0ff}
+#connectBtn{font-size:18px;padding:10px 30px;margin:10px;background:#2a6a2a;color:#fff;border:none;border-radius:8px;cursor:pointer}
+#connectBtn:hover{background:#3a8a3a}
+#joinForm{display:flex;flex-direction:column;align-items:center}
+</style>
+</head><body>
+
+<div id="joinForm">
+    <div class="info">Enter Room Code:</div>
+    <input type="text" id="roomInput" maxlength="6" placeholder="XXXXXX">
+    <button id="connectBtn">Connect</button>
+</div>
+
+<div class="info" id="roomInfo" style="display:none">Room: <span class="room" id="roomDisplay"></span></div>
+<canvas id="radar" width="400" height="400"></canvas>
+<div class="info"><span class="status" id="status"></span></div>
+
+<script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
+<script>
+const canvas = document.getElementById('radar');
+const ctx = canvas.getContext('2d');
+const status = document.getElementById('status');
+const joinForm = document.getElementById('joinForm');
+const roomInfo = document.getElementById('roomInfo');
+const roomDisplay = document.getElementById('roomDisplay');
+const roomInput = document.getElementById('roomInput');
+const connectBtn = document.getElementById('connectBtn');
+const size = 400;
+
+let client = null;
+let currentRoom = '';
+
+// Check URL for room code
+const urlParams = new URLSearchParams(window.location.search);
+const urlRoom = urlParams.get('room');
+if (urlRoom && urlRoom.length === 6) {
+    roomInput.value = urlRoom.toUpperCase();
+    setTimeout(() => connectBtn.click(), 500);
+}
+
+connectBtn.onclick = function() {
+    const room = roomInput.value.toUpperCase().trim();
+    if (room.length !== 6) {
+        status.textContent = 'Room code must be 6 characters';
+        status.className = 'status err';
+        return;
+    }
+    
+    currentRoom = room;
+    joinForm.style.display = 'none';
+    roomInfo.style.display = 'block';
+    roomDisplay.textContent = room;
+    canvas.style.display = 'block';
+    
+    connect(room);
+};
+
+roomInput.onkeypress = function(e) {
+    if (e.key === 'Enter') connectBtn.click();
+};
+
+function connect(room) {
+    status.textContent = 'Connecting...';
+    status.className = 'status wait';
+    
+    if (typeof mqtt === 'undefined') {
+        status.textContent = 'MQTT library not loaded';
+        status.className = 'status err';
+        return;
+    }
+    
+    client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt', {
+        clientId: 'viewer_' + Math.random().toString(16).substr(2, 8),
+        clean: true,
+        connectTimeout: 15000,
+        reconnectPeriod: 5000
+    });
+    
+    client.on('connect', function() {
+        status.textContent = 'Subscribing...';
+        client.subscribe('radar/' + room, function(err) {
+            if (err) {
+                status.textContent = 'Subscribe failed';
+                status.className = 'status err';
+            } else {
+                status.textContent = 'Waiting for data...';
+                status.className = 'status wait';
+            }
+        });
+    });
+    
+    client.on('message', function(topic, message) {
+        try {
+            const d = JSON.parse(message.toString());
+            draw(d);
+            status.textContent = 'Live';
+            status.className = 'status ok';
+        } catch(e) {}
+    });
+    
+    client.on('error', function() {
+        status.textContent = 'Connection error';
+        status.className = 'status err';
+    });
+    
+    client.on('offline', function() {
+        status.textContent = 'Offline';
+        status.className = 'status err';
+    });
+    
+    client.on('reconnect', function() {
+        status.textContent = 'Reconnecting...';
+        status.className = 'status wait';
+    });
+}
+
+function draw(d) {
+    ctx.fillStyle = '#0f0f1a';
+    ctx.fillRect(0, 0, size, size);
+    
+    // Grid
+    ctx.strokeStyle = '#3a3a5a';
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 4; i++) {
+        ctx.beginPath();
+        ctx.moveTo(size * i / 4, 0);
+        ctx.lineTo(size * i / 4, size);
+        ctx.moveTo(0, size * i / 4);
+        ctx.lineTo(size, size * i / 4);
+        ctx.stroke();
+    }
+    
+    if (!d.v) {
+        ctx.fillStyle = '#666';
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Waiting for match...', size / 2, size / 2);
+        return;
+    }
+    
+    function w2r(x, z) {
+        const rx = (x - d.cx) / d.cs;
+        const rz = (z - d.cz) / d.cs;
+        return { x: size / 2 + rx * size / 2, y: size / 2 - rz * size / 2 };
+    }
+    
+    // Local player (green)
+    const lp = w2r(d.lx, d.lz);
+    ctx.fillStyle = '#00ff00';
+    ctx.beginPath();
+    ctx.arc(lp.x, lp.y, 8, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Enemies (red)
+    ctx.fillStyle = '#ff0000';
+    if (d.e && d.e.length) {
+        d.e.forEach(function(en) {
+            const ep = w2r(en.x, en.z);
+            if (ep.x >= 0 && ep.x <= size && ep.y >= 0 && ep.y <= size) {
+                ctx.beginPath();
+                ctx.arc(ep.x, ep.y, 8, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        });
+    }
+}
+</script>
+</body></html>
