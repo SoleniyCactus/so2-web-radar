@@ -4,6 +4,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>Cloud Radar</title>
 <style>
+@font-face {
+    font-family: 'Weapons';
+    src: url('https://soleniycactus.github.io/so2-web-radar/weapons.ttf') format('truetype');
+}
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#1a1a2e;display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:100vh;font-family:Arial,sans-serif}
 #radar{background:#0f0f1a;border:2px solid #4a4a6a;border-radius:8px;max-width:95vw;max-height:95vw;display:none}
@@ -614,35 +618,39 @@ function draw(d) {
         });
     }
     
-    // Draw grenades
+    // Draw grenades with weapon font icons
     if (settings.showGrenades && d.g && d.g.length) {
-        const gr = 5; // grenade radius
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
         d.g.forEach(function(grenade) {
             const gx = grenade[0];
             const gz = grenade[1];
             const gtype = grenade[2];
             
-            // Color based on grenade type
-            // 91=HE (red), 92=smoke (cyan), 93=flash (white), 94/95=molotov (orange)
-            let gcolor;
+            // Icon and color based on grenade type (same as cheat)
+            // 91=HE (c), 92=smoke (d), 93=flash (e), 94=molotov (f), 95=molotov (g)
+            let gcolor, gicon;
             switch(gtype) {
-                case 91: gcolor = '#ff4444'; break; // HE - red
-                case 92: gcolor = '#00ffff'; break; // Smoke - cyan
-                case 93: gcolor = '#ffffff'; break; // Flash - white
-                case 94:
-                case 95: gcolor = '#ff8800'; break; // Molotov - orange
-                default: gcolor = '#ffff00'; break; // Unknown - yellow
+                case 91: gcolor = '#ff4444'; gicon = 'c'; break; // HE - red
+                case 92: gcolor = '#00ffff'; gicon = 'd'; break; // Smoke - cyan
+                case 93: gcolor = '#ffffff'; gicon = 'e'; break; // Flash - white
+                case 94: gcolor = '#ff8800'; gicon = 'f'; break; // Molotov - orange
+                case 95: gcolor = '#ff8800'; gicon = 'g'; break; // Molotov - orange
+                default: gcolor = '#ffff00'; gicon = 'c'; break; // Unknown - yellow
             }
             
             const p = w2r(gx, gz);
             if (p.x >= 0 && p.x <= size && p.y >= 0 && p.y <= size) {
+                ctx.font = '14px Weapons, Arial';
+                // Draw outline
+                ctx.fillStyle = '#000';
+                ctx.fillText(gicon, p.x - 1, p.y);
+                ctx.fillText(gicon, p.x + 1, p.y);
+                ctx.fillText(gicon, p.x, p.y - 1);
+                ctx.fillText(gicon, p.x, p.y + 1);
+                // Draw icon
                 ctx.fillStyle = gcolor;
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 1.5;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, gr, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
+                ctx.fillText(gicon, p.x, p.y);
             }
         });
     }
