@@ -17,9 +17,19 @@ body{background:#1a1a2e;display:flex;flex-direction:column;justify-content:cente
 .btn-connect{background:#2a6a2a}.btn-connect:hover{background:#3a8a3a}
 .btn-back{background:#6a4a2a}.btn-back:hover{background:#8a6a3a}
 .btn-share{background:#2a4a6a}.btn-share:hover{background:#3a6a8a}
+.btn-settings{background:#4a4a6a}.btn-settings:hover{background:#5a5a7a}
 #joinForm{display:flex;flex-direction:column;align-items:center}
 #controls{display:none;margin-top:10px}
 .copied{color:#0f0;font-size:12px;margin-left:10px}
+#settingsPanel{display:none;background:#0f0f1a;border:2px solid #4a4a6a;border-radius:8px;padding:15px;margin:10px;max-width:350px}
+.setting-row{display:flex;align-items:center;margin:8px 0;color:#fff;font-size:14px}
+.setting-row label{flex:1}
+.setting-row input[type="checkbox"]{width:18px;height:18px}
+.setting-row input[type="color"]{width:40px;height:25px;border:none;cursor:pointer}
+.setting-row input[type="range"]{width:100px}
+.setting-row select{background:#1a1a2e;color:#fff;border:1px solid #4a4a6a;padding:5px;border-radius:4px}
+.setting-group{border-top:1px solid #4a4a6a;padding-top:10px;margin-top:10px}
+.setting-title{color:#8f8;font-size:12px;margin-bottom:5px}
 </style>
 </head><body>
 
@@ -39,7 +49,58 @@ body{background:#1a1a2e;display:flex;flex-direction:column;justify-content:cente
 <div id="controls">
     <button class="btn btn-back" id="backBtn">Back</button>
     <button class="btn btn-share" id="shareBtn">Share Link</button>
+    <button class="btn btn-settings" id="settingsBtn">Settings</button>
     <span class="copied" id="copiedMsg"></span>
+</div>
+
+<div id="settingsPanel">
+    <div class="setting-row">
+        <label>Show Teammates</label>
+        <input type="checkbox" id="showTeammates" checked>
+    </div>
+    <div class="setting-row">
+        <label>Show Names</label>
+        <input type="checkbox" id="showNames">
+    </div>
+    <div class="setting-row">
+        <label>Name Outline</label>
+        <input type="checkbox" id="nameOutline" checked>
+    </div>
+    <div class="setting-row">
+        <label>Name Size</label>
+        <input type="range" id="nameSize" min="8" max="24" value="12">
+        <span id="nameSizeVal">12</span>
+    </div>
+    
+    <div class="setting-group">
+        <div class="setting-title">Colors</div>
+        <div class="setting-row">
+            <label>Local Player</label>
+            <input type="color" id="localColor" value="#ffffff">
+        </div>
+        <div class="setting-row">
+            <label>Teammates</label>
+            <input type="color" id="teamColor" value="#00ff00">
+        </div>
+        <div class="setting-row">
+            <label>Enemies</label>
+            <input type="color" id="enemyColor" value="#ff0000">
+        </div>
+        <div class="setting-row">
+            <label>Names</label>
+            <input type="color" id="nameColor" value="#ffffff">
+        </div>
+    </div>
+    
+    <div class="setting-group">
+        <div class="setting-title">View As Player</div>
+        <div class="setting-row">
+            <label>Select Player</label>
+            <select id="localPlayerSelect">
+                <option value="">Host (default)</option>
+            </select>
+        </div>
+    </div>
 </div>
 
 <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
@@ -56,8 +117,84 @@ const connectBtn = document.getElementById('connectBtn');
 const controls = document.getElementById('controls');
 const backBtn = document.getElementById('backBtn');
 const shareBtn = document.getElementById('shareBtn');
+const settingsBtn = document.getElementById('settingsBtn');
 const copiedMsg = document.getElementById('copiedMsg');
+const settingsPanel = document.getElementById('settingsPanel');
 const size = 400;
+
+// Settings elements
+const showTeammatesEl = document.getElementById('showTeammates');
+const showNamesEl = document.getElementById('showNames');
+const nameOutlineEl = document.getElementById('nameOutline');
+const nameSizeEl = document.getElementById('nameSize');
+const nameSizeValEl = document.getElementById('nameSizeVal');
+const localColorEl = document.getElementById('localColor');
+const teamColorEl = document.getElementById('teamColor');
+const enemyColorEl = document.getElementById('enemyColor');
+const nameColorEl = document.getElementById('nameColor');
+const localPlayerSelectEl = document.getElementById('localPlayerSelect');
+
+// Settings
+let settings = {
+    showTeammates: true,
+    showNames: false,
+    nameOutline: true,
+    nameSize: 12,
+    localColor: '#ffffff',
+    teamColor: '#00ff00',
+    enemyColor: '#ff0000',
+    nameColor: '#ffffff',
+    selectedPlayer: ''
+};
+
+// Load settings from localStorage
+try {
+    const saved = localStorage.getItem('cloudRadarSettings');
+    if (saved) {
+        Object.assign(settings, JSON.parse(saved));
+        showTeammatesEl.checked = settings.showTeammates;
+        showNamesEl.checked = settings.showNames;
+        nameOutlineEl.checked = settings.nameOutline;
+        nameSizeEl.value = settings.nameSize;
+        nameSizeValEl.textContent = settings.nameSize;
+        localColorEl.value = settings.localColor;
+        teamColorEl.value = settings.teamColor;
+        enemyColorEl.value = settings.enemyColor;
+        nameColorEl.value = settings.nameColor;
+    }
+} catch(e) {}
+
+// Save settings
+function saveSettings() {
+    settings.showTeammates = showTeammatesEl.checked;
+    settings.showNames = showNamesEl.checked;
+    settings.nameOutline = nameOutlineEl.checked;
+    settings.nameSize = parseInt(nameSizeEl.value);
+    settings.localColor = localColorEl.value;
+    settings.teamColor = teamColorEl.value;
+    settings.enemyColor = enemyColorEl.value;
+    settings.nameColor = nameColorEl.value;
+    settings.selectedPlayer = localPlayerSelectEl.value;
+    localStorage.setItem('cloudRadarSettings', JSON.stringify(settings));
+}
+
+// Settings event listeners
+showTeammatesEl.onchange = saveSettings;
+showNamesEl.onchange = saveSettings;
+nameOutlineEl.onchange = saveSettings;
+nameSizeEl.oninput = function() {
+    nameSizeValEl.textContent = this.value;
+    saveSettings();
+};
+localColorEl.onchange = saveSettings;
+teamColorEl.onchange = saveSettings;
+enemyColorEl.onchange = saveSettings;
+nameColorEl.onchange = saveSettings;
+localPlayerSelectEl.onchange = saveSettings;
+
+settingsBtn.onclick = function() {
+    settingsPanel.style.display = settingsPanel.style.display === 'none' ? 'block' : 'none';
+};
 
 // Map images base URL (GitHub Pages)
 const MAPS_URL = 'https://soleniycactus.github.io/so2-web-radar/maps/';
@@ -67,6 +204,8 @@ let currentRoom = '';
 let currentMap = '';
 let mapImage = null;
 let mapImageLoaded = false;
+let lastData = null;
+let knownTeammates = new Map(); // name -> {x, z}
 
 // Check URL for room code
 const urlParams = new URLSearchParams(window.location.search);
@@ -104,14 +243,18 @@ backBtn.onclick = function() {
     currentMap = '';
     mapImage = null;
     mapImageLoaded = false;
+    lastData = null;
+    knownTeammates.clear();
     joinForm.style.display = 'flex';
     roomInfo.style.display = 'none';
     canvas.style.display = 'none';
     controls.style.display = 'none';
+    settingsPanel.style.display = 'none';
     status.textContent = '';
     copiedMsg.textContent = '';
     mapNameEl.textContent = '';
     roomInput.value = '';
+    localPlayerSelectEl.innerHTML = '<option value="">Host (default)</option>';
     history.pushState(null, '', window.location.pathname);
 };
 
@@ -137,9 +280,8 @@ function getBaseMapName(mapName) {
         .replace(/_NewYear2024$/, '')
         .replace(/_NY2026$/, '');
     
-    // Map variant names to base maps
     if (name.startsWith('Pixel')) {
-        name = name.replace('Pixel', '');  // PixelYards -> Yards, PixelSandstone -> Sandstone
+        name = name.replace('Pixel', '');
     }
     
     return name;
@@ -162,7 +304,6 @@ function loadMapImage(mapName) {
         };
         img.onerror = function() {
             if (!isFallback && name !== baseName) {
-                // Try fallback to base map
                 tryLoad(baseName, true);
             } else {
                 mapImageLoaded = false;
@@ -173,6 +314,63 @@ function loadMapImage(mapName) {
     };
     
     tryLoad(mapName, false);
+}
+
+function updatePlayerSelect(d) {
+    // Build list of all teammates (including host)
+    const players = new Map();
+    
+    // Add host
+    if (d.ln) {
+        players.set(d.ln, {x: d.lx, z: d.lz, isHost: true});
+    }
+    
+    // Add teammates
+    if (d.t && d.t.length) {
+        d.t.forEach(function(tm) {
+            const name = tm[2] || '';
+            if (name) {
+                players.set(name, {x: tm[0], z: tm[1], isHost: false});
+            }
+        });
+    }
+    
+    // Update select if players changed
+    const currentOptions = new Set();
+    for (let opt of localPlayerSelectEl.options) {
+        if (opt.value) currentOptions.add(opt.value);
+    }
+    
+    let needsUpdate = players.size !== currentOptions.size;
+    if (!needsUpdate) {
+        for (let name of players.keys()) {
+            if (!currentOptions.has(name)) {
+                needsUpdate = true;
+                break;
+            }
+        }
+    }
+    
+    if (needsUpdate) {
+        const selectedValue = localPlayerSelectEl.value;
+        localPlayerSelectEl.innerHTML = '<option value="">Host (default)</option>';
+        
+        players.forEach((data, name) => {
+            if (!data.isHost) {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                localPlayerSelectEl.appendChild(opt);
+            }
+        });
+        
+        // Restore selection if still valid
+        if (selectedValue && players.has(selectedValue)) {
+            localPlayerSelectEl.value = selectedValue;
+        }
+    }
+    
+    knownTeammates = players;
 }
 
 function connect(room) {
@@ -208,9 +406,11 @@ function connect(room) {
     client.on('message', function(topic, message) {
         try {
             const d = JSON.parse(message.toString());
+            lastData = d;
             if (d.m && d.m !== currentMap) {
                 loadMapImage(d.m);
             }
+            updatePlayerSelect(d);
             draw(d);
             status.textContent = 'Live';
             status.className = 'status ok';
@@ -234,15 +434,12 @@ function connect(room) {
 }
 
 function draw(d) {
-    // Clear canvas
     ctx.fillStyle = '#0f0f1a';
     ctx.fillRect(0, 0, size, size);
     
-    // Draw map image if loaded
     if (mapImageLoaded && mapImage) {
         ctx.drawImage(mapImage, 0, 0, size, size);
     } else {
-        // Grid fallback
         ctx.strokeStyle = '#3a3a5a';
         ctx.lineWidth = 1;
         for (let i = 1; i < 4; i++) {
@@ -265,6 +462,19 @@ function draw(d) {
         return;
     }
     
+    // Determine local player position based on selection
+    let localX = d.lx;
+    let localZ = d.lz;
+    let localName = d.ln || '';
+    const selectedPlayer = settings.selectedPlayer;
+    
+    if (selectedPlayer && knownTeammates.has(selectedPlayer)) {
+        const selected = knownTeammates.get(selectedPlayer);
+        localX = selected.x;
+        localZ = selected.z;
+        localName = selectedPlayer;
+    }
+    
     function w2r(x, z) {
         const rx = (x - d.cx) / d.cs;
         const rz = (z - d.cz) / d.cs;
@@ -272,32 +482,75 @@ function draw(d) {
     }
     
     const r = 6.4;
+    const fontSize = settings.nameSize;
     
-    // Draw teammates (green)
-    ctx.fillStyle = '#00ff00';
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 2;
-    if (d.t && d.t.length) {
+    function drawName(p, name) {
+        if (!settings.showNames || !name) return;
+        
+        ctx.font = fontSize + 'px Arial';
+        ctx.textAlign = 'center';
+        const textY = p.y - r - 4;
+        
+        if (settings.nameOutline) {
+            ctx.fillStyle = '#000';
+            ctx.fillText(name, p.x - 1, textY);
+            ctx.fillText(name, p.x + 1, textY);
+            ctx.fillText(name, p.x, textY - 1);
+            ctx.fillText(name, p.x, textY + 1);
+        }
+        ctx.fillStyle = settings.nameColor;
+        ctx.fillText(name, p.x, textY);
+    }
+    
+    // Draw teammates
+    if (settings.showTeammates && d.t && d.t.length) {
+        ctx.fillStyle = settings.teamColor;
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
         d.t.forEach(function(tm) {
+            const tmName = tm[2] || '';
+            // Skip if this teammate is selected as local player
+            if (selectedPlayer && tmName === selectedPlayer) return;
+            
             const p = w2r(tm[0], tm[1]);
             if (p.x >= 0 && p.x <= size && p.y >= 0 && p.y <= size) {
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
+                drawName(p, tmName);
             }
         });
     }
     
-    // Draw local player (green)
-    const lp = w2r(d.lx, d.lz);
+    // Draw host as teammate if different player selected
+    if (settings.showTeammates && selectedPlayer && d.ln) {
+        ctx.fillStyle = settings.teamColor;
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        const p = w2r(d.lx, d.lz);
+        if (p.x >= 0 && p.x <= size && p.y >= 0 && p.y <= size) {
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            drawName(p, d.ln);
+        }
+    }
+    
+    // Draw local player (selected or host)
+    ctx.fillStyle = settings.localColor;
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    const lp = w2r(localX, localZ);
     ctx.beginPath();
     ctx.arc(lp.x, lp.y, r, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
+    // Don't draw name for local player
     
-    // Draw enemies (red)
-    ctx.fillStyle = '#ff0000';
+    // Draw enemies
+    ctx.fillStyle = settings.enemyColor;
     if (d.e && d.e.length) {
         d.e.forEach(function(en) {
             const p = w2r(en[0], en[1]);
@@ -306,6 +559,7 @@ function draw(d) {
                 ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
+                drawName(p, en[2] || '');
             }
         });
     }
