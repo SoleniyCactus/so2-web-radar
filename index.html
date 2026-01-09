@@ -400,7 +400,9 @@ function connect(room) {
         return;
     }
     
-    client = mqtt.connect('wss://test.mosquitto.org:8081/mqtt', {
+    console.log('Connecting to MQTT broker...');
+    
+    client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt', {
         clientId: 'radar_' + Math.random().toString(16).substr(2, 8),
         clean: true,
         connectTimeout: 5000,
@@ -409,13 +411,16 @@ function connect(room) {
     });
     
     client.on('connect', function() {
+        console.log('MQTT connected!');
         status.textContent = 'Connected!';
         status.className = 'status ok';
         client.subscribe('radar/' + room, { qos: 0 }, function(err) {
             if (err) {
+                console.log('Subscribe error:', err);
                 status.textContent = 'Subscribe failed';
                 status.className = 'status err';
             } else {
+                console.log('Subscribed to radar/' + room);
                 status.textContent = 'Waiting for data...';
                 status.className = 'status wait';
             }
@@ -433,7 +438,9 @@ function connect(room) {
             draw(d);
             status.textContent = 'Live';
             status.className = 'status ok';
-        } catch(e) {}
+        } catch(e) {
+            console.log('Message parse error:', e);
+        }
     });
     
     client.on('error', function(err) {
@@ -443,13 +450,19 @@ function connect(room) {
     });
     
     client.on('offline', function() {
+        console.log('MQTT offline');
         status.textContent = 'Offline';
         status.className = 'status err';
     });
     
     client.on('reconnect', function() {
+        console.log('MQTT reconnecting...');
         status.textContent = 'Reconnecting...';
         status.className = 'status wait';
+    });
+    
+    client.on('close', function() {
+        console.log('MQTT connection closed');
     });
 }
 
