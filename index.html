@@ -390,13 +390,6 @@ function updatePlayerSelect(d) {
     knownTeammates = players;
 }
 
-// MQTT brokers to try (in order)
-const MQTT_BROKERS = [
-    'wss://broker.emqx.io:8084/mqtt',
-    'wss://broker.hivemq.com:8884/mqtt'
-];
-let currentBrokerIndex = 0;
-
 function connect(room) {
     status.textContent = 'Connecting...';
     status.className = 'status wait';
@@ -407,9 +400,7 @@ function connect(room) {
         return;
     }
     
-    const brokerUrl = MQTT_BROKERS[currentBrokerIndex];
-    
-    client = mqtt.connect(brokerUrl, {
+    client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt', {
         clientId: 'radar_' + Math.random().toString(16).substr(2, 8),
         clean: true,
         connectTimeout: 5000,
@@ -417,10 +408,7 @@ function connect(room) {
         keepalive: 60
     });
     
-    let connected = false;
-    
     client.on('connect', function() {
-        connected = true;
         status.textContent = 'Connected!';
         status.className = 'status ok';
         client.subscribe('radar/' + room, { qos: 0 }, function(err) {
@@ -450,24 +438,13 @@ function connect(room) {
     
     client.on('error', function(err) {
         console.log('MQTT error:', err);
-        if (!connected) {
-            status.textContent = 'Connection error, retrying...';
-            status.className = 'status err';
-        }
-    });
-    
-    client.on('close', function() {
-        if (connected) {
-            status.textContent = 'Disconnected';
-            status.className = 'status err';
-        }
+        status.textContent = 'Connection error';
+        status.className = 'status err';
     });
     
     client.on('offline', function() {
-        if (connected) {
-            status.textContent = 'Offline';
-            status.className = 'status err';
-        }
+        status.textContent = 'Offline';
+        status.className = 'status err';
     });
     
     client.on('reconnect', function() {
