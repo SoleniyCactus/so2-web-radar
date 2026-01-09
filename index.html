@@ -400,7 +400,7 @@ function connect(room) {
         return;
     }
     
-    client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt', {
+    client = mqtt.connect('wss://test.mosquitto.org:8081/mqtt', {
         clientId: 'radar_' + Math.random().toString(16).substr(2, 8),
         clean: true,
         connectTimeout: 5000,
