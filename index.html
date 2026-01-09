@@ -274,14 +274,18 @@ roomInput.onkeypress = function(e) {
 
 // Get base map name (remove suffixes and map variants)
 function getBaseMapName(mapName) {
-    let name = mapName
+    let name = mapName;
+    
+    // First remove suffixes
+    name = name
         .replace(/ 2x2$/, '')
         .replace(/Convoy$/, '')
         .replace(/_NewYear2024$/, '')
         .replace(/_NY2026$/, '');
     
+    // Then remove Pixel prefix
     if (name.startsWith('Pixel')) {
-        name = name.replace('Pixel', '');
+        name = name.substring(5); // Remove 'Pixel' prefix
     }
     
     return name;
@@ -484,7 +488,7 @@ function draw(d) {
     const r = 6.4;
     const fontSize = settings.nameSize;
     
-    function drawName(p, name) {
+    function drawName(p, name, circleColor) {
         if (!settings.showNames || !name) return;
         
         ctx.font = fontSize + 'px Arial';
@@ -500,11 +504,13 @@ function draw(d) {
         }
         ctx.fillStyle = settings.nameColor;
         ctx.fillText(name, p.x, textY);
+        
+        // Restore circle color
+        ctx.fillStyle = circleColor;
     }
     
     // Draw teammates
     if (settings.showTeammates && d.t && d.t.length) {
-        ctx.fillStyle = settings.teamColor;
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 2;
         d.t.forEach(function(tm) {
@@ -512,13 +518,14 @@ function draw(d) {
             // Skip if this teammate is selected as local player
             if (selectedPlayer && tmName === selectedPlayer) return;
             
+            ctx.fillStyle = settings.teamColor;
             const p = w2r(tm[0], tm[1]);
             if (p.x >= 0 && p.x <= size && p.y >= 0 && p.y <= size) {
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
-                drawName(p, tmName);
+                drawName(p, tmName, settings.teamColor);
             }
         });
     }
@@ -534,7 +541,7 @@ function draw(d) {
             ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
-            drawName(p, d.ln);
+            drawName(p, d.ln, settings.teamColor);
         }
     }
     
@@ -550,16 +557,17 @@ function draw(d) {
     // Don't draw name for local player
     
     // Draw enemies
-    ctx.fillStyle = settings.enemyColor;
+    ctx.strokeStyle = '#000';
     if (d.e && d.e.length) {
         d.e.forEach(function(en) {
+            ctx.fillStyle = settings.enemyColor;
             const p = w2r(en[0], en[1]);
             if (p.x >= 0 && p.x <= size && p.y >= 0 && p.y <= size) {
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
-                drawName(p, en[2] || '');
+                drawName(p, en[2] || '', settings.enemyColor);
             }
         });
     }
