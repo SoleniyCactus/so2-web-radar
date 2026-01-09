@@ -129,22 +129,43 @@ roomInput.onkeypress = function(e) {
     if (e.key === 'Enter') connectBtn.click();
 };
 
+// Get base map name (remove suffixes)
+function getBaseMapName(mapName) {
+    return mapName
+        .replace(/ 2x2$/, '')
+        .replace(/Convoy$/, '')
+        .replace(/_NewYear2024$/, '')
+        .replace(/_NY2026$/, '');
+}
+
 function loadMapImage(mapName) {
     if (mapName === currentMap && mapImage) return;
     
     currentMap = mapName;
     mapImageLoaded = false;
-    mapImage = new Image();
-    mapImage.crossOrigin = 'anonymous';
-    mapImage.onload = function() {
-        mapImageLoaded = true;
-        mapNameEl.textContent = mapName;
+    
+    const baseName = getBaseMapName(mapName);
+    const tryLoad = (name, isFallback) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = function() {
+            mapImage = img;
+            mapImageLoaded = true;
+            mapNameEl.textContent = isFallback ? mapName + ' (' + name + ')' : mapName;
+        };
+        img.onerror = function() {
+            if (!isFallback && name !== baseName) {
+                // Try fallback to base map
+                tryLoad(baseName, true);
+            } else {
+                mapImageLoaded = false;
+                mapNameEl.textContent = mapName + ' (no image)';
+            }
+        };
+        img.src = MAPS_URL + name + '.png';
     };
-    mapImage.onerror = function() {
-        mapImageLoaded = false;
-        mapNameEl.textContent = mapName + ' (no image)';
-    };
-    mapImage.src = MAPS_URL + mapName + '.png';
+    
+    tryLoad(mapName, false);
 }
 
 function connect(room) {
