@@ -9,6 +9,7 @@ body{background:#1a1a2e;display:flex;flex-direction:column;justify-content:cente
 #radar{background:#0f0f1a;border:2px solid #4a4a6a;border-radius:8px;max-width:95vw;max-height:95vw;display:none}
 .info{color:#fff;text-align:center;margin:10px;font-size:16px}
 .room{color:#0ff;font-weight:bold;font-size:24px}
+.map-name{color:#8f8;font-size:14px}
 .status{font-size:14px;margin-top:5px}
 .ok{color:#0f0}.err{color:#f00}.wait{color:#ff0}
 #roomInput{font-size:20px;padding:10px 20px;text-transform:uppercase;text-align:center;width:200px;border:2px solid #4a4a6a;border-radius:8px;background:#0f0f1a;color:#0ff}
@@ -28,7 +29,10 @@ body{background:#1a1a2e;display:flex;flex-direction:column;justify-content:cente
     <button class="btn btn-connect" id="connectBtn">Connect</button>
 </div>
 
-<div class="info" id="roomInfo" style="display:none">Room: <span class="room" id="roomDisplay"></span></div>
+<div class="info" id="roomInfo" style="display:none">
+    Room: <span class="room" id="roomDisplay"></span>
+    <div class="map-name" id="mapName"></div>
+</div>
 <canvas id="radar" width="400" height="400"></canvas>
 <div class="info"><span class="status" id="status"></span></div>
 
@@ -46,6 +50,7 @@ const status = document.getElementById('status');
 const joinForm = document.getElementById('joinForm');
 const roomInfo = document.getElementById('roomInfo');
 const roomDisplay = document.getElementById('roomDisplay');
+const mapNameEl = document.getElementById('mapName');
 const roomInput = document.getElementById('roomInput');
 const connectBtn = document.getElementById('connectBtn');
 const controls = document.getElementById('controls');
@@ -54,8 +59,14 @@ const shareBtn = document.getElementById('shareBtn');
 const copiedMsg = document.getElementById('copiedMsg');
 const size = 400;
 
+// Map images base URL (GitHub Pages)
+const MAPS_URL = 'https://soleniycactus.github.io/maps/';
+
 let client = null;
 let currentRoom = '';
+let currentMap = '';
+let mapImage = null;
+let mapImageLoaded = false;
 
 // Check URL for room code
 const urlParams = new URLSearchParams(window.location.search);
@@ -80,9 +91,7 @@ connectBtn.onclick = function() {
     canvas.style.display = 'block';
     controls.style.display = 'block';
     
-    // Update URL without reload
     history.pushState(null, '', '?room=' + room);
-    
     connect(room);
 };
 
@@ -92,12 +101,16 @@ backBtn.onclick = function() {
         client = null;
     }
     currentRoom = '';
+    currentMap = '';
+    mapImage = null;
+    mapImageLoaded = false;
     joinForm.style.display = 'flex';
     roomInfo.style.display = 'none';
     canvas.style.display = 'none';
     controls.style.display = 'none';
     status.textContent = '';
     copiedMsg.textContent = '';
+    mapNameEl.textContent = '';
     roomInput.value = '';
     history.pushState(null, '', window.location.pathname);
 };
@@ -108,7 +121,6 @@ shareBtn.onclick = function() {
         copiedMsg.textContent = 'Copied!';
         setTimeout(() => copiedMsg.textContent = '', 2000);
     }).catch(function() {
-        // Fallback for older browsers
         prompt('Copy this link:', url);
     });
 };
@@ -116,6 +128,24 @@ shareBtn.onclick = function() {
 roomInput.onkeypress = function(e) {
     if (e.key === 'Enter') connectBtn.click();
 };
+
+function loadMapImage(mapName) {
+    if (mapName === currentMap && mapImage) return;
+    
+    currentMap = mapName;
+    mapImageLoaded = false;
+    mapImage = new Image();
+    mapImage.crossOrigin = 'anonymous';
+    mapImage.onload = function() {
+        mapImageLoaded = true;
+        mapNameEl.textContent = mapName;
+    };
+    mapImage.onerror = function() {
+        mapImageLoaded = false;
+        mapNameEl.textContent = mapName + ' (no image)';
+    };
+    mapImage.src = MAPS_URL + mapName + '.png';
+}
 
 function connect(room) {
     status.textContent = 'Connecting...';
@@ -150,6 +180,9 @@ function connect(room) {
     client.on('message', function(topic, message) {
         try {
             const d = JSON.parse(message.toString());
+            if (d.m && d.m !== currentMap) {
+                loadMapImage(d.m);
+            }
             draw(d);
             status.textContent = 'Live';
             status.className = 'status ok';
@@ -173,22 +206,30 @@ function connect(room) {
 }
 
 function draw(d) {
+    // Clear canvas
     ctx.fillStyle = '#0f0f1a';
     ctx.fillRect(0, 0, size, size);
     
-    // Grid
-    ctx.strokeStyle = '#3a3a5a';
-    ctx.lineWidth = 1;
-    for (let i = 1; i < 4; i++) {
-        ctx.beginPath();
-        ctx.moveTo(size * i / 4, 0);
-        ctx.lineTo(size * i / 4, size);
-        ctx.moveTo(0, size * i / 4);
-        ctx.lineTo(size, size * i / 4);
-        ctx.stroke();
+    // Draw map image if loaded
+    if (mapImageLoaded && mapImage) {
+        ctx.drawImage(mapImage, 0, 0, size, size);
+    } else {
+        // Grid fallback
+        ctx.strokeStyle = '#3a3a5a';
+        ctx.lineWidth = 1;
+        for (let i = 1; i < 4; i++) {
+            ctx.beginPath();
+            ctx.moveTo(size * i / 4, 0);
+            ctx.lineTo(size * i / 4, size);
+            ctx.moveTo(0, size * i / 4);
+            ctx.lineTo(size, size * i / 4);
+            ctx.stroke();
+        }
     }
     
     if (!d.v) {
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.fillRect(0, 0, size, size);
         ctx.fillStyle = '#666';
         ctx.font = '14px Arial';
         ctx.textAlign = 'center';
@@ -206,6 +247,8 @@ function draw(d) {
     
     // Draw teammates (green)
     ctx.fillStyle = '#00ff00';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
     if (d.t && d.t.length) {
         d.t.forEach(function(tm) {
             const p = w2r(tm[0], tm[1]);
@@ -213,15 +256,17 @@ function draw(d) {
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
                 ctx.fill();
+                ctx.stroke();
             }
         });
     }
     
-    // Draw local player (green, slightly larger)
+    // Draw local player (green)
     const lp = w2r(d.lx, d.lz);
     ctx.beginPath();
-    ctx.arc(lp.x, lp.y, r * 1.2, 0, Math.PI * 2);
+    ctx.arc(lp.x, lp.y, r, 0, Math.PI * 2);
     ctx.fill();
+    ctx.stroke();
     
     // Draw enemies (red)
     ctx.fillStyle = '#ff0000';
@@ -232,6 +277,7 @@ function draw(d) {
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
                 ctx.fill();
+                ctx.stroke();
             }
         });
     }
