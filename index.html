@@ -101,6 +101,14 @@ body{background:#1a1a2e;display:flex;flex-direction:column;justify-content:cente
             </select>
         </div>
     </div>
+    
+    <div class="setting-group">
+        <div class="setting-title">Grenades</div>
+        <div class="setting-row">
+            <label>Show Grenades</label>
+            <input type="checkbox" id="showGrenades" checked>
+        </div>
+    </div>
 </div>
 
 <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
@@ -133,6 +141,7 @@ const teamColorEl = document.getElementById('teamColor');
 const enemyColorEl = document.getElementById('enemyColor');
 const nameColorEl = document.getElementById('nameColor');
 const localPlayerSelectEl = document.getElementById('localPlayerSelect');
+const showGrenadesEl = document.getElementById('showGrenades');
 
 // Settings
 let settings = {
@@ -144,7 +153,8 @@ let settings = {
     teamColor: '#00ff00',
     enemyColor: '#ff0000',
     nameColor: '#ffffff',
-    selectedPlayer: ''
+    selectedPlayer: '',
+    showGrenades: true
 };
 
 // Load settings from localStorage
@@ -161,6 +171,7 @@ try {
         teamColorEl.value = settings.teamColor;
         enemyColorEl.value = settings.enemyColor;
         nameColorEl.value = settings.nameColor;
+        showGrenadesEl.checked = settings.showGrenades !== false;
     }
 } catch(e) {}
 
@@ -175,6 +186,7 @@ function saveSettings() {
     settings.enemyColor = enemyColorEl.value;
     settings.nameColor = nameColorEl.value;
     settings.selectedPlayer = localPlayerSelectEl.value;
+    settings.showGrenades = showGrenadesEl.checked;
     localStorage.setItem('cloudRadarSettings', JSON.stringify(settings));
 }
 
@@ -191,6 +203,7 @@ teamColorEl.onchange = saveSettings;
 enemyColorEl.onchange = saveSettings;
 nameColorEl.onchange = saveSettings;
 localPlayerSelectEl.onchange = saveSettings;
+showGrenadesEl.onchange = saveSettings;
 
 settingsBtn.onclick = function() {
     settingsPanel.style.display = settingsPanel.style.display === 'none' ? 'block' : 'none';
@@ -597,6 +610,39 @@ function draw(d) {
                 ctx.fill();
                 ctx.stroke();
                 drawName(p, en[2] || '', settings.enemyColor);
+            }
+        });
+    }
+    
+    // Draw grenades
+    if (settings.showGrenades && d.g && d.g.length) {
+        const gr = 5; // grenade radius
+        d.g.forEach(function(grenade) {
+            const gx = grenade[0];
+            const gz = grenade[1];
+            const gtype = grenade[2];
+            
+            // Color based on grenade type
+            // 91=HE (red), 92=smoke (cyan), 93=flash (white), 94/95=molotov (orange)
+            let gcolor;
+            switch(gtype) {
+                case 91: gcolor = '#ff4444'; break; // HE - red
+                case 92: gcolor = '#00ffff'; break; // Smoke - cyan
+                case 93: gcolor = '#ffffff'; break; // Flash - white
+                case 94:
+                case 95: gcolor = '#ff8800'; break; // Molotov - orange
+                default: gcolor = '#ffff00'; break; // Unknown - yellow
+            }
+            
+            const p = w2r(gx, gz);
+            if (p.x >= 0 && p.x <= size && p.y >= 0 && p.y <= size) {
+                ctx.fillStyle = gcolor;
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, gr, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
             }
         });
     }
