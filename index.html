@@ -40,7 +40,7 @@ body{background:#1a1a2e;display:flex;flex-direction:column;justify-content:cente
 </div>
 
 <div class="info" id="roomInfo" style="display:none">
-    Room: <span class="room" id="roomDisplay"></span>
+    Room: <span class="room" id="roomDisplay" title="Click to copy" style="cursor:pointer"></span>
     <div class="map-name" id="mapName"></div>
 </div>
 <canvas id="radar" width="400" height="400"></canvas>
@@ -196,6 +196,16 @@ settingsBtn.onclick = function() {
     settingsPanel.style.display = settingsPanel.style.display === 'none' ? 'block' : 'none';
 };
 
+// Click on room code to copy
+roomDisplay.onclick = function() {
+    navigator.clipboard.writeText(currentRoom).then(function() {
+        copiedMsg.textContent = 'Code copied!';
+        setTimeout(() => copiedMsg.textContent = '', 2000);
+    }).catch(function() {
+        prompt('Copy this code:', currentRoom);
+    });
+};
+
 // Map images base URL (GitHub Pages)
 const MAPS_URL = 'https://soleniycactus.github.io/so2-web-radar/maps/';
 
@@ -287,6 +297,9 @@ function getBaseMapName(mapName) {
     if (name.startsWith('Pixel')) {
         name = name.substring(5); // Remove 'Pixel' prefix
     }
+    
+    // Map aliases to actual map names
+    if (name === 'Yards') name = 'Sandyards';
     
     return name;
 }
