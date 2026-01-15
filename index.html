@@ -126,7 +126,11 @@ body{background:#1a1a2e;display:flex;flex-direction:column;justify-content:cente
         </div>
         <div class="setting-row">
             <label>Bomb Color</label>
-            <input type="color" id="bombColor" value="#ff8000">
+            <input type="color" id="bombColor" value="#ff0000">
+        </div>
+        <div class="setting-row">
+            <label>Timer Color</label>
+            <input type="color" id="bombTimerColor" value="#ffffff">
         </div>
     </div>
 </div>
@@ -165,6 +169,7 @@ const showGrenadesEl = document.getElementById('showGrenades');
 const showBombEl = document.getElementById('showBomb');
 const showBombTimerEl = document.getElementById('showBombTimer');
 const bombColorEl = document.getElementById('bombColor');
+const bombTimerColorEl = document.getElementById('bombTimerColor');
 
 // Settings
 let settings = {
@@ -180,7 +185,8 @@ let settings = {
     showGrenades: true,
     showBomb: true,
     showBombTimer: true,
-    bombColor: '#ff8000'
+    bombColor: '#ff0000',
+    bombTimerColor: '#ffffff'
 };
 
 // Load settings from localStorage
@@ -201,6 +207,7 @@ try {
         showBombEl.checked = settings.showBomb !== false;
         showBombTimerEl.checked = settings.showBombTimer !== false;
         if (settings.bombColor) bombColorEl.value = settings.bombColor;
+        if (settings.bombTimerColor) bombTimerColorEl.value = settings.bombTimerColor;
     }
 } catch(e) {}
 
@@ -219,6 +226,7 @@ function saveSettings() {
     settings.showBomb = showBombEl.checked;
     settings.showBombTimer = showBombTimerEl.checked;
     settings.bombColor = bombColorEl.value;
+    settings.bombTimerColor = bombTimerColorEl.value;
     localStorage.setItem('cloudRadarSettings', JSON.stringify(settings));
 }
 
@@ -238,6 +246,7 @@ showGrenadesEl.onchange = saveSettings;
 showBombEl.onchange = saveSettings;
 showBombTimerEl.onchange = saveSettings;
 bombColorEl.onchange = saveSettings;
+bombTimerColorEl.onchange = saveSettings;
 localPlayerSelectEl.onchange = saveSettings;
 showGrenadesEl.onchange = saveSettings;
 
@@ -727,7 +736,7 @@ function draw(d) {
                 ctx.fillText(timerText, p.x, p.y - 9);
                 
                 // Text
-                ctx.fillStyle = settings.bombColor;
+                ctx.fillStyle = settings.bombTimerColor;
                 ctx.fillText(timerText, p.x, p.y - 10);
             }
         }
