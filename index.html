@@ -113,6 +113,22 @@ body{background:#1a1a2e;display:flex;flex-direction:column;justify-content:cente
             <input type="checkbox" id="showGrenades" checked>
         </div>
     </div>
+    
+    <div class="setting-group">
+        <div class="setting-title">Planted Bomb</div>
+        <div class="setting-row">
+            <label>Show Bomb</label>
+            <input type="checkbox" id="showBomb" checked>
+        </div>
+        <div class="setting-row">
+            <label>Show Timer</label>
+            <input type="checkbox" id="showBombTimer" checked>
+        </div>
+        <div class="setting-row">
+            <label>Bomb Color</label>
+            <input type="color" id="bombColor" value="#ff8000">
+        </div>
+    </div>
 </div>
 
 <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
@@ -146,6 +162,9 @@ const enemyColorEl = document.getElementById('enemyColor');
 const nameColorEl = document.getElementById('nameColor');
 const localPlayerSelectEl = document.getElementById('localPlayerSelect');
 const showGrenadesEl = document.getElementById('showGrenades');
+const showBombEl = document.getElementById('showBomb');
+const showBombTimerEl = document.getElementById('showBombTimer');
+const bombColorEl = document.getElementById('bombColor');
 
 // Settings
 let settings = {
@@ -158,7 +177,10 @@ let settings = {
     enemyColor: '#ff0000',
     nameColor: '#ffffff',
     selectedPlayer: '',
-    showGrenades: true
+    showGrenades: true,
+    showBomb: true,
+    showBombTimer: true,
+    bombColor: '#ff8000'
 };
 
 // Load settings from localStorage
@@ -176,6 +198,9 @@ try {
         enemyColorEl.value = settings.enemyColor;
         nameColorEl.value = settings.nameColor;
         showGrenadesEl.checked = settings.showGrenades !== false;
+        showBombEl.checked = settings.showBomb !== false;
+        showBombTimerEl.checked = settings.showBombTimer !== false;
+        if (settings.bombColor) bombColorEl.value = settings.bombColor;
     }
 } catch(e) {}
 
@@ -191,6 +216,9 @@ function saveSettings() {
     settings.nameColor = nameColorEl.value;
     settings.selectedPlayer = localPlayerSelectEl.value;
     settings.showGrenades = showGrenadesEl.checked;
+    settings.showBomb = showBombEl.checked;
+    settings.showBombTimer = showBombTimerEl.checked;
+    settings.bombColor = bombColorEl.value;
     localStorage.setItem('cloudRadarSettings', JSON.stringify(settings));
 }
 
@@ -206,6 +234,10 @@ localColorEl.onchange = saveSettings;
 teamColorEl.onchange = saveSettings;
 enemyColorEl.onchange = saveSettings;
 nameColorEl.onchange = saveSettings;
+showGrenadesEl.onchange = saveSettings;
+showBombEl.onchange = saveSettings;
+showBombTimerEl.onchange = saveSettings;
+bombColorEl.onchange = saveSettings;
 localPlayerSelectEl.onchange = saveSettings;
 showGrenadesEl.onchange = saveSettings;
 
@@ -653,6 +685,52 @@ function draw(d) {
                 ctx.fillText(gicon, p.x, p.y);
             }
         });
+    }
+    
+    // Draw planted bomb
+    if (settings.showBomb && d.b && d.b.length >= 2) {
+        const bx = d.b[0];
+        const bz = d.b[1];
+        const bTimer = d.b[2] || 0;
+        
+        const p = w2r(bx, bz);
+        if (p.x >= 0 && p.x <= size && p.y >= 0 && p.y <= size) {
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // Draw bomb icon (h = C4 in weapons font)
+            ctx.font = '16px Weapons, Arial';
+            const bombIcon = 'h';
+            
+            // Outline
+            ctx.fillStyle = '#000';
+            ctx.fillText(bombIcon, p.x - 1, p.y);
+            ctx.fillText(bombIcon, p.x + 1, p.y);
+            ctx.fillText(bombIcon, p.x, p.y - 1);
+            ctx.fillText(bombIcon, p.x, p.y + 1);
+            
+            // Icon
+            ctx.fillStyle = settings.bombColor;
+            ctx.fillText(bombIcon, p.x, p.y);
+            
+            // Draw timer above bomb
+            if (settings.showBombTimer && bTimer > 0) {
+                ctx.font = '11px Arial';
+                ctx.textBaseline = 'bottom';
+                const timerText = bTimer.toFixed(1) + 's';
+                
+                // Outline
+                ctx.fillStyle = '#000';
+                ctx.fillText(timerText, p.x - 1, p.y - 10);
+                ctx.fillText(timerText, p.x + 1, p.y - 10);
+                ctx.fillText(timerText, p.x, p.y - 11);
+                ctx.fillText(timerText, p.x, p.y - 9);
+                
+                // Text
+                ctx.fillStyle = settings.bombColor;
+                ctx.fillText(timerText, p.x, p.y - 10);
+            }
+        }
     }
 }
 </script>
